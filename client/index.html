@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LogForge</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:      #0b0f1a;
+    --surface: #111827;
+    --card:    #1a2235;
+    --border:  #1e2d45;
+    --text:    #e2e8f0;
+    --muted:   #64748b;
+    --subtle:  #334155;
+    --cyan:    #22d3ee;
+    --amber:   #f59e0b;
+    --green:   #22c55e;
+    --red:     #f87171;
+    --pink:    #f472b6;
+    --blue:    #60a5fa;
+    --yellow:  #fbbf24;
+    --radius:  10px;
+    --radius-sm: 6px;
+  }
+  body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; font-size: 13px; min-height: 100vh; }
+  a { color: var(--cyan); }
+
+  .layout { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+
+  /* Sidebar */
+  .sidebar { background: var(--surface); border-right: 1px solid var(--border); padding: 0; display: flex; flex-direction: column; }
+  .sidebar-brand { padding: 20px 16px 16px; border-bottom: 1px solid var(--border); }
+  .brand-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .logo-box { width: 28px; height: 28px; background: var(--cyan); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+  .logo-box svg { width: 16px; height: 16px; fill: #0b0f1a; }
+  .brand-name { font-size: 15px; font-weight: 700; letter-spacing: -.3px; color: var(--text); }
+  .brand-sub { font-size: 10px; color: var(--muted); letter-spacing: .5px; text-transform: uppercase; }
+  .live-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; background: rgba(34,197,94,.15); color: var(--green); padding: 2px 7px; border-radius: 20px; border: 1px solid rgba(34,197,94,.25); margin-top: 6px; }
+  .live-dot { width: 5px; height: 5px; background: var(--green); border-radius: 50%; animation: blink 1.4s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+  .sidebar-nav { padding: 12px 0; flex: 1; overflow-y: auto; }
+  .nav-section { padding: 4px 16px 4px; font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: var(--subtle); margin-top: 8px; }
+  .nav-item { display: flex; align-items: center; gap: 8px; padding: 8px 16px; cursor: pointer; color: var(--muted); transition: all .15s; border-left: 2px solid transparent; font-size: 12px; }
+  .nav-item:hover { color: var(--text); background: rgba(255,255,255,.03); }
+  .nav-item.active { color: var(--cyan); border-left-color: var(--cyan); background: rgba(34,211,238,.05); }
+  .nav-item .ni-icon { font-size: 14px; min-width: 16px; }
+  .nav-badge { margin-left: auto; font-size: 10px; background: var(--border); color: var(--muted); padding: 1px 6px; border-radius: 10px; }
+  .nav-badge.red { background: rgba(248,113,113,.15); color: var(--red); }
+  .nav-badge.amber { background: rgba(245,158,11,.15); color: var(--amber); }
+
+  .sidebar-footer { padding: 12px 16px; border-top: 1px solid var(--border); }
+  .health-row { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+  .health-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--subtle); }
+  .health-dot.ok  { background: var(--green); }
+  .health-dot.err { background: var(--red); }
+  .api-url { font-size: 10px; color: var(--subtle); margin-top: 4px; word-break: break-all; }
+
+  /* Main */
+  .main { display: flex; flex-direction: column; overflow: hidden; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; border-bottom: 1px solid var(--border); background: var(--surface); gap: 12px; flex-wrap: wrap; }
+  .topbar-left { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .topbar-right { display: flex; gap: 8px; align-items: center; }
+
+  .stat-pill { display: flex; align-items: baseline; gap: 5px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 5px 12px; }
+  .sp-val { font-size: 16px; font-weight: 700; }
+  .sp-val.r { color: var(--red); } .sp-val.a { color: var(--amber); }
+  .sp-val.g { color: var(--green); } .sp-val.p { color: var(--pink); } .sp-val.c { color: var(--text); }
+  .sp-lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--card); color: var(--text); cursor: pointer; font-size: 12px; font-family: inherit; transition: all .15s; }
+  .btn:hover { border-color: var(--subtle); background: var(--border); }
+  .btn.primary { background: var(--cyan); color: #0b0f1a; border-color: var(--cyan); font-weight: 700; }
+  .btn.primary:hover { background: #67e8f9; }
+  .btn.danger { border-color: rgba(248,113,113,.3); color: var(--red); }
+  .btn.danger:hover { background: rgba(248,113,113,.1); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  select { padding: 7px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 12px; font-family: inherit; cursor: pointer; }
+
+  .content { flex: 1; display: grid; grid-template-rows: auto 1fr; overflow: hidden; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); padding: 0 20px; background: var(--surface); }
+  .tab { padding: 10px 16px; cursor: pointer; color: var(--muted); font-size: 12px; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all .15s; display: flex; align-items: center; gap: 6px; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+
+  /* Panel */
+  .panels { overflow-y: auto; padding: 20px; }
+  .panel { display: none; } .panel.active { display: block; }
+
+  /* Gauge grid */
+  .section-title { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 10px; }
+  .gauge-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; margin-bottom: 20px; }
+  .gauge { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+  .g-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .g-label { font-size: 11px; color: var(--muted); }
+  .g-value { font-size: 18px; font-weight: 700; transition: color .4s; }
+  .bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 2px; transition: width .7s cubic-bezier(.4,0,.2,1), background .4s; }
+  .g-sub { font-size: 10px; color: var(--subtle); margin-top: 6px; }
+
+  /* Scenario grid */
+  .sc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; margin-bottom: 16px; }
+  .sc-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 13px; cursor: pointer; transition: all .15s; position: relative; }
+  .sc-card:hover { border-color: var(--subtle); background: #1f2d42; }
+  .sc-card:active { transform: scale(.98); }
+  .sc-card.loading { opacity: .6; pointer-events: none; }
+  .sc-card.success { border-color: rgba(34,197,94,.4); animation: flash-green .4s ease; }
+  .sc-card.fail    { border-color: rgba(248,113,113,.4); animation: flash-red .4s ease; }
+  @keyframes flash-green { 0%,100%{background:var(--card)} 50%{background:rgba(34,197,94,.1)} }
+  @keyframes flash-red   { 0%,100%{background:var(--card)} 50%{background:rgba(248,113,113,.1)} }
+  .sc-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px; }
+  .sc-name { font-size: 12px; font-weight: 700; color: var(--text); }
+  .badge { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
+  .b-error { background: rgba(248,113,113,.15); color: var(--red); }
+  .b-warn  { background: rgba(245,158,11,.15);  color: var(--yellow); }
+  .b-crit  { background: rgba(244,114,182,.15); color: var(--pink); }
+  .b-info  { background: rgba(96,165,250,.15);  color: var(--blue); }
+  .sc-desc { font-size: 10px; color: var(--muted); line-height: 1.5; margin-bottom: 7px; }
+  .sc-tag  { font-size: 9px; color: var(--subtle); background: var(--surface); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border); }
+
+  .ctrl-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+
+  /* Log stream */
+  .log-section { border-top: 1px solid var(--border); background: var(--bg); }
+  .log-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; border-bottom: 1px solid var(--border); background: var(--surface); flex-wrap: wrap; gap: 8px; }
+  .log-title { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; }
+  .log-filters { display: flex; gap: 4px; flex-wrap: wrap; }
+  .lf { font-size: 10px; padding: 3px 9px; border-radius: 4px; cursor: pointer; border: 1px solid var(--border); color: var(--muted); font-weight: 700; letter-spacing: .3px; transition: all .15s; }
+  .lf.active { border-color: var(--subtle); color: var(--text); background: var(--card); }
+  .log-body { height: 260px; overflow-y: auto; padding: 8px 20px; font-size: 11px; line-height: 1.9; }
+  .log-line { display: flex; gap: 10px; border-bottom: 1px solid rgba(30,45,69,.4); }
+  .l-ts  { color: var(--subtle); white-space: nowrap; min-width: 165px; }
+  .l-cat { min-width: 62px; font-size: 9px; font-weight: 700; color: var(--subtle); padding-top: 2px; letter-spacing: .3px; }
+  .l-lv  { min-width: 64px; font-weight: 700; }
+  .l-lv.WARN     { color: var(--yellow); }
+  .l-lv.ERROR    { color: var(--red); }
+  .l-lv.CRITICAL { color: var(--pink); }
+  .l-lv.INFO     { color: var(--blue); }
+  .l-msg  { color: var(--text); flex: 1; word-break: break-all; }
+  .l-meta { color: var(--subtle); font-size: 10px; }
+  .log-empty { text-align: center; padding: 40px; color: var(--subtle); }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 20px; right: 20px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 16px; font-size: 12px; color: var(--text); z-index: 999; opacity: 0; transform: translateY(10px); transition: all .2s; pointer-events: none; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.err { border-color: rgba(248,113,113,.4); color: var(--red); }
+
+  @media (max-width: 700px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .log-body { height: 200px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo">
+        <div class="logo-box">
+          <svg viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="2" rx="1"/><rect x="1" y="7" width="10" height="2" rx="1"/><rect x="1" y="11" width="12" height="2" rx="1"/></svg>
+        </div>
+        <span class="brand-name">LogForge</span>
+      </div>
+      <div class="brand-sub">Scenario Generator</div>
+      <div class="live-pill"><div class="live-dot"></div> Live</div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section">Views</div>
+      <div class="nav-item active" onclick="switchTab('app')" id="nav-app">
+        <span class="ni-icon">⬡</span> App logs
+        <span class="nav-badge red" id="nb-err">0</span>
+      </div>
+      <div class="nav-item" onclick="switchTab('res')" id="nav-res">
+        <span class="ni-icon">◈</span> Resources
+        <span class="nav-badge amber" id="nb-wrn">0</span>
+      </div>
+
+      <div class="nav-section">Actions</div>
+      <div class="nav-item" onclick="fireAll()">
+        <span class="ni-icon">▶</span> Fire all
+      </div>
+      <div class="nav-item" onclick="randomBurst()">
+        <span class="ni-icon">⚡</span> Random burst
+      </div>
+      <div class="nav-item" onclick="fetchSnapshot()">
+        <span class="ni-icon">◎</span> Live snapshot
+      </div>
+
+      <div class="nav-section">API</div>
+      <div class="nav-item" onclick="window.open('/api/logs/scenarios','_blank')">
+        <span class="ni-icon">⊞</span> GET /scenarios
+      </div>
+      <div class="nav-item" onclick="window.open('/api/logs/snapshot','_blank')">
+        <span class="ni-icon">⊞</span> GET /snapshot
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="health-row">
+        <div class="health-dot" id="health-dot"></div>
+        <span id="health-text">Checking...</span>
+      </div>
+      <div class="api-url" id="api-url">—</div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="stat-pill"><span class="sp-val c" id="st-tot">0</span><span class="sp-lbl">fired</span></div>
+        <div class="stat-pill"><span class="sp-val r" id="st-err">0</span><span class="sp-lbl">errors</span></div>
+        <div class="stat-pill"><span class="sp-val a" id="st-wrn">0</span><span class="sp-lbl">warns</span></div>
+        <div class="stat-pill"><span class="sp-val p" id="st-crt">0</span><span class="sp-lbl">critical</span></div>
+        <div class="stat-pill"><span class="sp-val g" id="st-inf">0</span><span class="sp-lbl">info</span></div>
+      </div>
+      <div class="topbar-right">
+        <select id="auto-sel" onchange="setAuto()">
+          <option value="0">Manual</option>
+          <option value="3000">Auto · 3s</option>
+          <option value="6000">Auto · 6s</option>
+          <option value="10000">Auto · 10s</option>
+        </select>
+        <button class="btn danger" onclick="clearLog()">✕ Clear log</button>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="tabs">
+        <div class="tab active" id="tab-app" onclick="switchTab('app')">⬡ App logs</div>
+        <div class="tab" id="tab-res" onclick="switchTab('res')">◈ Resource usage</div>
+      </div>
+
+      <div class="panels">
+
+        <!-- App panel -->
+        <div class="panel active" id="panel-app">
+          <div class="section-title">Application scenarios</div>
+          <div class="sc-grid" id="app-grid"></div>
+          <div class="ctrl-row">
+            <button class="btn primary" onclick="fireAllApp()">▶ Fire all app</button>
+            <button class="btn" onclick="randomBurstApp()">⚡ Random burst</button>
+          </div>
+        </div>
+
+        <!-- Resource panel -->
+        <div class="panel" id="panel-res">
+          <div class="section-title">Live resource gauges</div>
+          <div class="gauge-grid" id="gauge-grid"></div>
+
+          <div class="ctrl-row" style="margin-bottom:12px">
+            <button class="btn primary" onclick="fetchSnapshot()">◎ Live snapshot</button>
+            <button class="btn" onclick="resetGauges()">↺ Reset gauges</button>
+          </div>
+
+          <div class="section-title">Resource scenarios</div>
+          <div class="sc-grid" id="res-grid"></div>
+          <div class="ctrl-row">
+            <button class="btn primary" onclick="fireAllRes()">▶ Fire all resource</button>
+            <button class="btn" onclick="randomBurstRes()">⚡ Random burst</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Log stream (always visible) -->
+    <div class="log-section">
+      <div class="log-header">
+        <div class="log-title"><div class="live-dot"></div> Log stream</div>
+        <div class="log-filters" id="filters">
+          <span class="lf active" data-f="ALL"      onclick="setFilter('ALL')">ALL</span>
+          <span class="lf"        data-f="INFO"     onclick="setFilter('INFO')">INFO</span>
+          <span class="lf"        data-f="WARN"     onclick="setFilter('WARN')">WARN</span>
+          <span class="lf"        data-f="ERROR"    onclick="setFilter('ERROR')">ERROR</span>
+          <span class="lf"        data-f="CRITICAL" onclick="setFilter('CRITICAL')">CRITICAL</span>
+          <span class="lf"        data-f="APP"      onclick="setFilter('APP')">APP</span>
+          <span class="lf"        data-f="RESOURCE" onclick="setFilter('RESOURCE')">RESOURCE</span>
+        </div>
+      </div>
+      <div class="log-body" id="log-body">
+        <div class="log-empty" id="log-empty">No events yet — fire a scenario above</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const APP_SCENARIOS = [
+  { id:'server_error',   name:'Server error',        level:'ERROR',    badge:'b-error', desc:'500 unhandled exception with stack trace' },
+  { id:'db_down',        name:'DB connection down',   level:'ERROR',    badge:'b-error', desc:'Database unreachable — all retries exhausted' },
+  { id:'auth_error',     name:'Auth failure',         level:'ERROR',    badge:'b-error', desc:'Invalid or expired JWT token' },
+  { id:'user_blocked',   name:'User blocked',         level:'WARN',     badge:'b-warn',  desc:'Blocked user attempted resource access' },
+  { id:'rate_limit',     name:'Rate limit hit',       level:'WARN',     badge:'b-warn',  desc:'Client exceeded request threshold' },
+  { id:'payment_fail',   name:'Payment failed',       level:'ERROR',    badge:'b-error', desc:'Payment gateway declined transaction' },
+  { id:'cache_miss',     name:'Cache miss',           level:'WARN',     badge:'b-warn',  desc:'Key not found, falling back to DB' },
+  { id:'slow_query',     name:'Slow DB query',        level:'WARN',     badge:'b-warn',  desc:'Query exceeded 3s latency threshold' },
+  { id:'third_party_down',name:'3rd party API down',  level:'ERROR',    badge:'b-error', desc:'External service timed out' },
+  { id:'disk_full',      name:'Disk near full',       level:'ERROR',    badge:'b-error', desc:'Storage at 94% — writes may fail' },
+  { id:'service_start',  name:'Service startup',      level:'INFO',     badge:'b-info',  desc:'App bootstrap and config loaded' },
+  { id:'user_login',     name:'User login',           level:'INFO',     badge:'b-info',  desc:'Successful OAuth2 authentication' },
+];
+
+const RES_SCENARIOS = [
+  { id:'high_cpu',           name:'High CPU spike',         level:'WARN',     badge:'b-warn',  desc:'CPU at 94% — runaway process' },
+  { id:'cpu_critical',       name:'CPU critical',           level:'ERROR',    badge:'b-error', desc:'CPU at 99% — requests queuing' },
+  { id:'low_memory',         name:'Low memory',             level:'WARN',     badge:'b-warn',  desc:'Heap approaching OOM threshold' },
+  { id:'oom_kill',           name:'OOM kill',               level:'ERROR',    badge:'b-error', desc:'Process killed — out of memory' },
+  { id:'disk_io_saturation', name:'Disk I/O saturation',    level:'WARN',     badge:'b-warn',  desc:'Write queue full — throughput degraded' },
+  { id:'network_saturation', name:'Network saturation',     level:'ERROR',    badge:'b-error', desc:'Bandwidth at 96% — packet loss' },
+  { id:'thread_leak',        name:'Thread leak',            level:'ERROR',    badge:'b-error', desc:'Thread count climbing — resource leak' },
+  { id:'gc_pause',           name:'GC pause spike',         level:'WARN',     badge:'b-warn',  desc:'420ms stop-the-world — latency impacted' },
+  { id:'memory_leak',        name:'Memory leak detected',   level:'ERROR',    badge:'b-error', desc:'Heap growing steadily — 87 MB/hr' },
+];
+
+const GAUGE_DEFS = [
+  { id:'cpu',  label:'CPU usage',   unit:'%',  base:18, warn:80, crit:95 },
+  { id:'mem',  label:'Memory',      unit:'%',  base:42, warn:85, crit:95 },
+  { id:'disk', label:'Disk I/O',    unit:'%',  base:12, warn:75, crit:90 },
+  { id:'net',  label:'Network',     unit:'%',  base:9,  warn:80, crit:95 },
+  { id:'thr',  label:'Threads',     unit:'',   base:24, warn:200, crit:480, max:600 },
+  { id:'gc',   label:'GC pause',    unit:'ms', base:8,  warn:200, crit:450, max:600 },
+];
+
+const GAUGE_EFFECTS = {
+  high_cpu:           { cpu: 94 },
+  cpu_critical:       { cpu: 99 },
+  low_memory:         { mem: 88 },
+  oom_kill:           { mem: 99 },
+  disk_io_saturation: { disk: 91 },
+  network_saturation: { net: 96 },
+  thread_leak:        { thr: 487 },
+  gc_pause:           { gc: 420 },
+  memory_leak:        { mem: 76 },
+};
+
+let gaugeState = {};
+GAUGE_DEFS.forEach(g => { gaugeState[g.id] = g.base; });
+
+let stats = { tot:0, err:0, wrn:0, crt:0, inf:0 };
+let activeFilter = 'ALL';
+let autoTimer = null;
+
+function barColor(pct, w, c) {
+  if (pct >= c) return '#f87171';
+  if (pct >= w) return '#fbbf24';
+  return '#22c55e';
+}
+
+function renderGauges() {
+  document.getElementById('gauge-grid').innerHTML = GAUGE_DEFS.map(g => {
+    const raw = gaugeState[g.id];
+    const max = g.max || 100;
+    const pct = Math.round((raw / max) * 100);
+    const wp  = Math.round((g.warn / max) * 100);
+    const cp  = Math.round((g.crit / max) * 100);
+    const col = barColor(pct, wp, cp);
+    const display = g.unit === '%' ? raw + '%' : raw + (g.unit || '');
+    return `<div class="gauge">
+      <div class="g-top">
+        <span class="g-label">${g.label}</span>
+        <span class="g-value" style="color:${col}">${display}</span>
+      </div>
+      <div class="bar"><div class="bar-fill" style="width:${pct}%;background:${col}"></div></div>
+      <div class="g-sub">${pct}% of capacity</div>
+    </div>`;
+  }).join('');
+}
+
+function scHTML(s) {
+  return `<div class="sc-card" id="sc-${s.id}" onclick="fire('${s.id}')">
+    <div class="sc-head">
+      <span class="sc-name">${s.name}</span>
+      <span class="badge ${s.badge}">${s.level}</span>
+    </div>
+    <div class="sc-desc">${s.desc}</div>
+    <span class="sc-tag">POST /api/logs/generate</span>
+  </div>`;
+}
+
+function renderScenarios() {
+  document.getElementById('app-grid').innerHTML = APP_SCENARIOS.map(scHTML).join('');
+  document.getElementById('res-grid').innerHTML = RES_SCENARIOS.map(scHTML).join('');
+}
+
+function updateStats(level) {
+  stats.tot++;
+  if (level === 'ERROR')    stats.err++;
+  if (level === 'WARN')     stats.wrn++;
+  if (level === 'CRITICAL') stats.crt++;
+  if (level === 'INFO')     stats.inf++;
+  document.getElementById('st-tot').textContent = stats.tot;
+  document.getElementById('st-err').textContent = stats.err;
+  document.getElementById('st-wrn').textContent = stats.wrn;
+  document.getElementById('st-crt').textContent = stats.crt;
+  document.getElementById('st-inf').textContent = stats.inf;
+  document.getElementById('nb-err').textContent = stats.err;
+  document.getElementById('nb-wrn').textContent = stats.wrn;
+}
+
+function appendLog(level, cat, msg, meta) {
+  const body = document.getElementById('log-body');
+  const empty = document.getElementById('log-empty');
+  if (empty) empty.remove();
+
+  const ts = new Date().toISOString().replace('T', ' ').slice(0, 23);
+  const visible = activeFilter === 'ALL' || activeFilter === level || activeFilter === cat;
+
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.dataset.level = level;
+  line.dataset.cat   = cat;
+  if (!visible) line.style.display = 'none';
+
+  const metaStr = typeof meta === 'object'
+    ? Object.entries(meta).filter(([k]) => !['requestId','requestid'].includes(k.toLowerCase()))
+        .map(([k,v]) => `${k}=${JSON.stringify(v)}`).join(' ')
+    : meta;
+
+  line.innerHTML = `<span class="l-ts">${ts}</span><span class="l-cat">[${cat}]</span><span class="l-lv ${level}">[${level}]</span><span class="l-msg">${msg} <span class="l-meta">${metaStr}</span></span>`;
+  body.appendChild(line);
+  body.scrollTop = body.scrollHeight;
+  updateStats(level);
+}
+
+async function fire(id) {
+  const card = document.getElementById('sc-' + id);
+  if (card) card.classList.add('loading');
+
+  try {
+    const res  = await fetch('/api/logs/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scenario: id }),
+    });
+    const data = await res.json();
+
+    if (card) { card.classList.remove('loading'); card.classList.add('success'); setTimeout(() => card.classList.remove('success'), 600); }
+
+    const sc  = [...APP_SCENARIOS, ...RES_SCENARIOS].find(s => s.id === id);
+    const cat = data.category === 'resource' ? 'RESOURCE' : 'APP';
+
+    if (GAUGE_EFFECTS[id]) {
+      Object.entries(GAUGE_EFFECTS[id]).forEach(([k,v]) => { gaugeState[k] = v; });
+      renderGauges();
+    }
+
+    appendLog(sc?.level || 'INFO', cat, `[${id}]`, data.generated);
+  } catch (e) {
+    if (card) { card.classList.remove('loading'); card.classList.add('fail'); setTimeout(() => card.classList.remove('fail'), 600); }
+    showToast('API error: ' + e.message, true);
+  }
+}
+
+async function fetchSnapshot() {
+  try {
+    const res  = await fetch('/api/logs/snapshot');
+    const data = await res.json();
+    const d    = data.data;
+
+    if (d.usedPercent) gaugeState.mem = d.usedPercent;
+    renderGauges();
+    appendLog('INFO', 'RESOURCE', '[snapshot] Real live metrics', d);
+    showToast('Live snapshot captured');
+  } catch (e) {
+    showToast('Snapshot failed: ' + e.message, true);
+  }
+}
+
+function fireAllApp() { APP_SCENARIOS.forEach((s, i) => setTimeout(() => fire(s.id), i * 80)); }
+function fireAllRes()  { RES_SCENARIOS.forEach((s, i) => setTimeout(() => fire(s.id), i * 100)); }
+function fireAll()     { [...APP_SCENARIOS, ...RES_SCENARIOS].forEach((s, i) => setTimeout(() => fire(s.id), i * 60)); }
+function randomBurst() {
+  const all = [...APP_SCENARIOS, ...RES_SCENARIOS].sort(() => Math.random() - .5).slice(0, 5);
+  all.forEach((s, i) => setTimeout(() => fire(s.id), i * 150));
+}
+function randomBurstApp() {
+  APP_SCENARIOS.slice().sort(() => Math.random() - .5).slice(0, 4).forEach((s, i) => setTimeout(() => fire(s.id), i * 150));
+}
+function randomBurstRes() {
+  RES_SCENARIOS.slice().sort(() => Math.random() - .5).slice(0, 4).forEach((s, i) => setTimeout(() => fire(s.id), i * 150));
+}
+
+function resetGauges() {
+  GAUGE_DEFS.forEach(g => { gaugeState[g.id] = g.base; });
+  renderGauges();
+  appendLog('INFO', 'RESOURCE', '[reset] All gauges reset to baseline', { cpu:'18%', mem:'42%', disk:'12%', net:'9%', threads:24 });
+}
+
+function setFilter(f) {
+  activeFilter = f;
+  document.querySelectorAll('.lf').forEach(el => el.classList.toggle('active', el.dataset.f === f));
+  document.querySelectorAll('.log-line').forEach(el => {
+    el.style.display = (f === 'ALL' || el.dataset.level === f || el.dataset.cat === f) ? '' : 'none';
+  });
+}
+
+function clearLog() {
+  document.getElementById('log-body').innerHTML = '<div class="log-empty" id="log-empty">No events yet — fire a scenario above</div>';
+  stats = { tot:0, err:0, wrn:0, crt:0, inf:0 };
+  ['st-tot','st-err','st-wrn','st-crt','st-inf','nb-err','nb-wrn'].forEach(id => document.getElementById(id).textContent = '0');
+}
+
+function switchTab(t) {
+  ['app','res'].forEach(id => {
+    document.getElementById('tab-'  + id).classList.toggle('active', id === t);
+    document.getElementById('panel-'+ id).classList.toggle('active', id === t);
+    document.getElementById('nav-'  + id).classList.toggle('active', id === t);
+  });
+}
+
+function setAuto() {
+  clearInterval(autoTimer);
+  const v = parseInt(document.getElementById('auto-sel').value);
+  if (v) autoTimer = setInterval(randomBurst, v);
+}
+
+function showToast(msg, isErr = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isErr ? ' err' : '');
+  setTimeout(() => { t.className = 'toast'; }, 2500);
+}
+
+async function checkHealth() {
+  const dot  = document.getElementById('health-dot');
+  const text = document.getElementById('health-text');
+  const url  = document.getElementById('api-url');
+  try {
+    const res  = await fetch('/health');
+    const data = await res.json();
+    dot.className  = 'health-dot ok';
+    text.textContent = `Healthy · up ${Math.round(data.uptime)}s`;
+    url.textContent  = window.location.origin;
+  } catch {
+    dot.className  = 'health-dot err';
+    text.textContent = 'API unreachable';
+  }
+}
+
+renderGauges();
+renderScenarios();
+checkHealth();
+setInterval(checkHealth, 15000);
+</script>
+</body>
+</html>
