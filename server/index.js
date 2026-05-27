@@ -2,7 +2,8 @@ const express = require('express');
 const cors    = require('cors');
 const path    = require('path');
 
-const app    = express();
+const store  = require('./store');
+
 const PORT   = process.env.PORT || 3000;
 const logger = require('./logger');
 
@@ -10,10 +11,11 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../client')));
 
-app.use('/api/logs', require('./routes/logs'));
+app.use('/api/logs',  require('./routes/logs'));
+app.use('/api/query', require('./routes/query'));
 
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', uptime: Math.round(process.uptime()), ts: new Date().toISOString() });
+  res.json({ status: 'ok', uptime: Math.round(process.uptime()), ts: new Date().toISOString(), store: { size: store.size(), max: 10_000 } });
 });
 
 app.get('*', (_req, res) => {
