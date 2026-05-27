@@ -2,10 +2,10 @@ const express = require('express');
 const cors    = require('cors');
 const path    = require('path');
 
-const store  = require('./store');
-
+const app    = express();
 const PORT   = process.env.PORT || 3000;
 const logger = require('./logger');
+const store  = require('./store');
 
 app.use(cors());
 app.use(express.json());

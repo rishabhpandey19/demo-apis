@@ -3,6 +3,9 @@ FROM node:20-alpine
 WORKDIR /app
 
 COPY package*.json ./
+RUN npm ci --only=production
+
+# After (works without lockfile)
 RUN npm install --omit=dev
 
 COPY server/ ./server/
