@@ -1,7 +1,7 @@
 openapi: 3.1.0
 
 info:
-  title: LogForge API
+  title: demo API
   version: 1.0.0
   description: |
     On-demand log and resource scenario generator.
@@ -32,7 +32,7 @@ info:
 servers:
   - url: http://localhost:3000
     description: Local development
-  - url: https://your-domain.com
+  - url: https://api.hivemindteam.dev
     description: Production (Dokploy)
 
 tags:
